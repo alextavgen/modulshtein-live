@@ -6,11 +6,19 @@ from pubnub.enums import PNOperationType, PNStatusCategory
 import random
 import midi_interface
 import queue
+from pubnub.exceptions import PubNubException
+import asyncio
+import json
+import logging
 
+logger = logging.getLogger('modulshtein-live')
+
+instruments = dict()
 CHANNEL_START = 10
 CHANNEL_END = 12
 pnconfig = PNConfiguration()
 pnconfig.subscribe_key = "sub-c-6a7e619c-f3fd-11e9-ad72-8e6732c0d56b"
+pnconfig.publish_key = "pub-c-04e1d58f-37d0-42ae-9db2-088a4753a892"
 pnconfig.ssl = False
 
 pubnub = PubNub(pnconfig)
@@ -67,20 +75,40 @@ class MySubscribeCallback(SubscribeCallback):
     def presence(self, pubnub, presence):
         pass  # handle incoming presence data
 
+
     def message(self, pubnub, message):
         print(message.message)
-        sender = message.message['sender']
-        if sender not in phones_dict:
-            phones_dict[sender] = random.randint(CHANNEL_START, CHANNEL_END)
-
-        midi_interface.handle_message(message, 9 + message.message['instrument'], q)
+        if 'command' in message.message:
+            if message.message['command'] == 'INSTRUMENTS':
+                print('Received command INSTRUMENTS')
+                give_instruments_info()
+        else:
+            print(message.message)
+            if message.message['sender'] not in phones_dict and 'command' not in message.message:
+                sender = message.message['sender']
+                phones_dict[sender] = message.message['instrument']
+                instruments[message.message['instrument']] = False
+                print('Send instruments ')
+                give_instruments_info()
+            midi_interface.handle_message(message, 9 + message.message['instrument'], q)
 
 
     def signal(self, pubnub, signal):
         pass # handle incoming signals
 
 
-
+def give_instruments_info():
+    try:
+        global instruments
+        print('Preparing to send')
+        msg = instruments
+        print(msg)
+        envelope = pubnub.publish().channel("instruments_channel").message(msg).sync()
+        print("publish timetoken: %d" % envelope.result.timetoken)
+        print(instruments)
+    except PubNubException as e:
+        print(e)
+        pass
 
 
 pubnub.add_listener(MySubscribeCallback())
@@ -89,7 +117,6 @@ pubnub.add_listener(MySubscribeCallback())
 pubnub.subscribe().channels('orientation_channel').execute()
 
 
-import asyncio
 
 async def periodic():
     while True:

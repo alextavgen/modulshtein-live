@@ -227,17 +227,26 @@ mw11 = MidiOutWrapper(midiout, ch=11)
 mw12 = MidiOutWrapper(midiout, ch=12)
 
 def map_to(x, y, z):
-    note = 40 + x * 2
+    note = 30 + x * 2
     velocity = 100 + 2 * abs(y)
     print(note, velocity)
     return note, velocity
 
 
-def map_to_orientation(alpha, beta, gamma):
-    note = 40 + int(int(beta)/3)
-    velocity = 100 + int(int(gamma)/3)
+def map_to_orientation(start_value, alpha, beta, gamma):
+    if start_value == 11:
+        if beta > 0:
+            return 43, 100 + int(int(gamma)/4)
+        else:
+            return 40, 100 + int(int(gamma)/4)
+    note = start_value + int(int(beta)/2.5)
+    velocity = 100 + int(int(gamma)/4)
     print(note, velocity)
     return note, velocity
+
+CHANEL_10_START_NOTE = 30
+CHANEL_11_START_NOTE = 40
+CHANEL_12_START_NOTE = 11
 
 
 def handle_message(message, channel, q):
@@ -263,13 +272,13 @@ def handle_message(message, channel, q):
                 #time.sleep(0.1)
     elif 'alpha' in message.message:
         if channel == 10:
-            note, velocity = map_to_orientation(message.message['alpha'], message.message['beta'], message.message['gamma'])
+            note, velocity = map_to_orientation(CHANEL_10_START_NOTE, message.message['alpha'], message.message['beta'], message.message['gamma'])
             mw10.send_note_on(note=note, velocity=velocity)
             # time.sleep(1 + abs(message.message['z']))
             mw10.send_note_off(note=note, velocity=velocity)
             # time.sleep(0.1)
         elif channel == 11:
-            note, velocity = map_to_orientation(message.message['alpha'], message.message['beta'], message.message['gamma'])
+            note, velocity = map_to_orientation(CHANEL_11_START_NOTE, message.message['alpha'], message.message['beta'], message.message['gamma'])
             mw11.send_note_on(note=note, velocity=velocity)
             # time.sleep(1 + abs(message.message['z']))
             #mw11.send_note_off(note=note, velocity=velocity)
@@ -277,7 +286,7 @@ def handle_message(message, channel, q):
             # mw11.send_note_off(note=note, velocity=velocity)
             # time.sleep(0.1)
         elif channel == 12:
-            note, velocity = map_to_orientation(message.message['alpha'], message.message['beta'], message.message['gamma'])
+            note, velocity = map_to_orientation(CHANEL_12_START_NOTE, message.message['alpha'], message.message['beta'], message.message['gamma'])
             mw12.send_note_on(note=note, velocity=velocity)
             # time.sleep(1 + abs(message.message['z']))
             mw12.send_note_off(note=note, velocity=velocity)
